@@ -1,4 +1,3 @@
-install.packages("tidyverse")
 library(tidyverse)
 library(dplyr)
 library(lubridate)
@@ -11,7 +10,12 @@ uber_data <- uber_data %>%
            tpep_dropoff_datetime <= as.POSIXct("2024-12-31"))
 
 uber_data_cleaned <- uber_data %>%
-  filter(!is.na(fare_amount) & !is.na(trip_distance) & !is.na(passenger_count))
+  drop_na(c(payment_type, fare_amount, trip_distance, passenger_count))
+
+uber_data_cleaned <- uber_data_cleaned %>%
+  filter(!is.na(fare_amount) & !is.na(trip_distance))
+
+#colSums(is.na(uber_data_cleaned))
 
 uber_data_cleaned$passenger_count[is.na(uber_data_cleaned$passenger_count)] <- 
   median(uber_data_cleaned$passenger_count, na.rm = TRUE)
@@ -32,36 +36,31 @@ uber_data_cleaned <- uber_data_cleaned %>%
 uber_data_cleaned$RatecodeID[is.na(uber_data_cleaned$RatecodeID)] <- 1 
 uber_data_cleaned$Airport_fee[is.na(uber_data_cleaned$Airport_fee)] <- 0
 
-uber_data_cleaned <- uber_data_cleaned %>%
-  drop_na(c(payment_type, fare_amount, trip_distance, passenger_count))
-
-uber_data_cleaned <- uber_data_cleaned %>%
-  mutate(row_number = row_number())
-
-write_parquet(uber_data_cleaned, "cleaned_uber_data.parquet")
+#uber_data_cleaned <- uber_data_cleaned %>%
+ # mutate(row_number = row_number())
 
 #EDA
-df <- uber_data_cleaned
-str(df)
-summary(df)
+str(uber_data_cleaned)
+summary(uber_data_cleaned)
 
-colSums(is.na(df))
+colSums(is.na(uber_data_cleaned))
 
-ggplot(uber_data_cleaned, aes(y = fare_amount)) +
-  geom_boxplot(fill = "red", alpha = 0.6) +
+ggplot(uber_data_cleaned, aes(x = fare_amount)) +
+  geom_histogram(fill = "red", alpha = 0.6, bins = 30) +
   labs(title = "Fare Amount Boxplot", y = "Fare ($)")
-
-hist(df$trip_distance, main = "Trip Distance Distribution After Cleaning", col = "green", breaks = 50)
 
 fare_cutoff <- quantile(uber_data_cleaned$fare_amount, 0.99, na.rm = TRUE)
 uber_data_cleaned <- uber_data_cleaned %>% filter(fare_amount <= fare_cutoff)
+
+hist(uber_data_cleaned$trip_distance, main = "Trip Distance Distribution After Cleaning", col = "green", breaks = 50)
+
+max(uber_data_cleaned$trip_distance)
 
 uber_data_cleaned <- uber_data_cleaned %>% filter(passenger_count > 0)
 
 summary(uber_data_cleaned)
 
-uber_data_cleaned <- uber_data_cleaned %>%
-  select(-c(pickup_day, pickup_month, pickup_hour,trip_duration,pickup_date,pickup_time,dropoff_date,dropoff_time))
-
 str(uber_data_cleaned)
 glimpse(uber_data_cleaned)
+
+write_parquet(uber_data_cleaned, "cleaned_uber_data.parquet")
