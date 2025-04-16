@@ -4,7 +4,7 @@ library(ggplot2)
 library(DataExplorer)
 library(corrplot)
 
-uber<-uber_data_cleaned
+uber<-read_parquet("C:/Users/HP/Desktop/SY II/Data Science/R language/cleaned_uber_data.parquet")
 uber <-uber %>%
   mutate(
     pickup_datetime = as.POSIXct(tpep_pickup_datetime, format="%Y-%m-%d %H:%M:%S"),
@@ -15,6 +15,8 @@ uber <-uber %>%
     is_peak_hour = ifelse(hour_of_day %in% c(7,8,9,17,18,19), 1, 0),  # Peak Rush Hour Indicator
     trip_duration = as.numeric(difftime(dropoff_datetime, pickup_datetime, units="mins")) # Trip duration in minutes
   )
+
+uber <- uber %>% filter(trip_duration > 0)
 
 str(uber)
 # Categorize trip distance
@@ -31,7 +33,17 @@ uber <-uber %>%
 uber <-uber %>%
   select(-c(tpep_pickup_datetime, tpep_dropoff_datetime, store_and_fwd_flag))
 
+duration_cutoff <- quantile(uber$trip_duration, 0.99, na.rm = TRUE)
+uber <- uber %>% filter(trip_duration <= duration_cutoff)
+
+dist_cutoff <- quantile(uber$trip_distance, 0.99, na.rm = TRUE)
+uber <- uber %>% filter(trip_distance <= dist_cutoff)
+
+t_cutoff <- quantile(uber$total_amount, 0.99, na.rm = TRUE)
+uber <- uber %>% filter(total_amount <= t_cutoff)
+
 summary(uber)
+
 
 # Missing values check
 plot_missing(uber)
@@ -42,13 +54,13 @@ ggplot(uber, aes(x = fare_amount)) +
   labs(title = "Fare Amount Distribution", x = "Fare ($)", y = "Count")
 
 # Boxplot for trip duration
-ggplot(uber, aes(y = trip_duration)) +
-  geom_boxplot(fill = "red", alpha = 0.6) +
+ggplot(uber, aes(x = trip_duration)) +
+  geom_histogram(fill = "red",bins=30, alpha = 0.6) +
   labs(title = "Trip Duration Boxplot", y = "Minutes")
 
 # Correlation heatmap
 numeric_cols <-uber %>% select_if(is.numeric)
-corrplot(cor(numeric_cols, use = "complete.obs"), method = "color")
+corrplot(cor(numeric_cols, use = "complete.obs"), method = "color",tl.cex = 0.8)
 
 # Step 4: Data Preprocessing for Modeling
 
@@ -56,8 +68,8 @@ corrplot(cor(numeric_cols, use = "complete.obs"), method = "color")
 uber <-uber %>% drop_na()
 
 # Remove outliers using IQR method
-Q1 <- quantile(uber_data$fare_amount, 0.25)
-Q3 <- quantile(uber_data$fare_amount, 0.75)
+Q1 <- quantile(uber$fare_amount, 0.25)
+Q3 <- quantile(uber$fare_amount, 0.75)
 IQR_value <- Q3 - Q1
 uber <-uber %>% filter(fare_amount >= (Q1 - 1.5 * IQR_value) & fare_amount <= (Q3 + 1.5 * IQR_value))
 
@@ -66,7 +78,5 @@ uber <-uber %>%
   mutate(trip_duration_scaled = scale(trip_duration))
 
 # Save cleaned dataset for model training
-write.csv(uber, "cleaned_uber_data.csv", row.names = FALSE)
+write_parquet(uber, "cleaned_uber_data1.parquet")
 
-# Print first few rows
-head(uber)
