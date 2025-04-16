@@ -1,10 +1,7 @@
-install.packages("arrow")  # If not installed
-install.packages("dplyr")
-
 library(arrow)
 library(dplyr)
 
-file_paths <- list.files(path = "C:/Users/Swaraj Patil/Desktop/DS_CP/Taxi", pattern = "*.parquet", full.names = TRUE)
+file_paths <- list.files(path = "D:/DS CP/Data", pattern = "*.parquet", full.names = TRUE)
 sample_data <- function(file, sample_size = 1000000) {
   data <- read_parquet(file)  # Load dataset
   # Take a random sample (or full data if the file has fewer rows)
@@ -12,7 +9,7 @@ sample_data <- function(file, sample_size = 1000000) {
   return(sampled_data)
 }
 
-sampled_data_list <- lapply(file_paths, sample_data)
+sampled_data_list<-lapply(file_paths, sample_data)
 merged_data <- bind_rows(sampled_data_list)
 
 write_parquet(merged_data, "merged_fare_data.parquet")
@@ -34,9 +31,9 @@ plot_missing(merged_data)
 
 nrow(merged_data) - nrow(distinct(merged_data))
 
-boxplot(merged_data$fare_amount, main = "Fare Amount Boxplot", col = "skyblue", breaks=50)
-boxplot(merged_data$trip_distance, main = "Trip Distance Distribution", col = "green", breaks = 50)
-hist(merged_data$trip_distance, main = "Trip Distance Distribution After Cleaning", col = "green", breaks = 50)
+boxplot(merged_data$fare_amount, main = "Fare Amount Boxplot before cleaning", col = "skyblue", breaks=50)
+boxplot(merged_data$trip_distance, main = "Trip Distance Distribution before cleaning", col = "green", breaks = 50)
+hist(merged_data$trip_distance, main = "Trip Distance Distribution before Cleaning", col = "green", breaks = 50)
 
 numeric_df <- select(merged_data, where(is.numeric))
 corr_matrix <- cor(na.omit(numeric_df))
